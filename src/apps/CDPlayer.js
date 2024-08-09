@@ -245,8 +245,8 @@ const CDPlayer = ({ track, token }) => {
       'user-read-currently-playing',
     ];
 
-    const clientId = 'your-client-id'; // Replace with your Spotify client ID
-    const redirectUri = 'your-redirect-uri'; // Replace with your app's redirect URI
+    const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID; 
+    const redirectUri = encodeURIComponent(window.location.href); 
 
     const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${scopes.join('%20')}`;
 
