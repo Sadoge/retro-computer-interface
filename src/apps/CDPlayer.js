@@ -100,7 +100,7 @@ const CDPlayer = ({ track, token }) => {
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState('0:00');
   const [duration, setDuration] = useState('0:00');
-  const [lastError, setLastError] = useState(null);
+  const [setLastError] = useState(null);
 
   useEffect(() => {
     if (!token) return;
@@ -181,7 +181,7 @@ const CDPlayer = ({ track, token }) => {
         player.disconnect();
       }
     };
-  }, [token]);
+  }, [player, token]);
 
   useEffect(() => {
     if (deviceId && track.uri) {
@@ -210,7 +210,7 @@ const CDPlayer = ({ track, token }) => {
         setLastError("Playback Error");
       });
     }
-  }, [deviceId, track.uri, token]);
+  }, [setLastError, deviceId, track.uri, token]);
 
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);

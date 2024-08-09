@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import SpotifyWebApi from 'spotify-web-api-js';
 import CDPlayer from './CDPlayer';
@@ -72,13 +72,13 @@ const SpotifyApp = ({ openNewWindow }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
 
-  const checkTokenValidity = () => {
+  const checkTokenValidity = useCallback(() => {
     if (!token || !tokenExpiry) {
       return false;
     }
     const now = new Date().getTime();
     return now < parseInt(tokenExpiry, 10);
-  };
+  }, [token, tokenExpiry]);
 
   const authenticateSpotify = () => {
     const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID; 
@@ -118,7 +118,7 @@ const SpotifyApp = ({ openNewWindow }) => {
     } else {
       spotifyApi.setAccessToken(token);
     }
-  }, [token, tokenExpiry]);
+  }, [token, tokenExpiry, checkTokenValidity]);
 
   const handleTrackSelect = (track) => {
     const width = 320;
@@ -151,9 +151,9 @@ const SpotifyApp = ({ openNewWindow }) => {
       <Container>
         <h2>Spotify App</h2>
         <p>Please log in to Spotify to use this app.</p>
-        <a onClick={authenticateSpotify}>
+        <button onClick={authenticateSpotify}>
           Login to Spotify
-        </a>
+        </button>
       </Container>
     );
   }

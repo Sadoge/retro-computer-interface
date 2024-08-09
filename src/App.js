@@ -94,7 +94,7 @@ const ThemeSelector = styled.select`
 
 const AppContent = () => {
   const [time, setTime] = useState(new Date());
-  const { theme, toggleTheme } = useTheme();
+  const { toggleTheme } = useTheme();
   const [openApps, setOpenApps] = useState([]);
   const desktopRef = useRef(null);
 
@@ -163,7 +163,6 @@ const AppContent = () => {
 
   const updateAppSize = (appId, size) => {
     const desktopRect = desktopRef.current.getBoundingClientRect();
-    const app = openApps.find(a => a.id === appId);
     
     const maxWidth = Math.min(parseInt(size.width), desktopRect.width * 0.8);
     const maxHeight = Math.min(parseInt(size.height), desktopRect.height * 0.8);
