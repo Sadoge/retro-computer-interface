@@ -81,8 +81,8 @@ const SpotifyApp = ({ openNewWindow }) => {
   };
 
   const authenticateSpotify = () => {
-    const clientId = '3f487c5c696f4a8da70ce1d7657830f6';
-    const redirectUri = encodeURIComponent('http://myapp.local:3000'); // Updated for dynamic URL
+    const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID; 
+    const redirectUri = encodeURIComponent(window.location.href); 
     const scopes = encodeURIComponent('streaming user-read-private user-read-email user-modify-playback-state user-read-currently-playing user-read-playback-state');
     const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=${scopes}`;
     window.location.href = authUrl;
