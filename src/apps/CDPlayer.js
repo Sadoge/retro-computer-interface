@@ -246,7 +246,7 @@ const CDPlayer = ({ track, token }) => {
     ];
 
     const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID; 
-    const redirectUri = encodeURIComponent(window.location.href); 
+    const redirectUri = encodeURIComponent('https://sadoge.github.io/retro-computer-interface/'); 
 
     const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${scopes.join('%20')}`;
 
