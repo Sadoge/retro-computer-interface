@@ -95,12 +95,11 @@ const TimeDisplay = styled.div`
 
 const CDPlayer = ({ track, token }) => {
   const [player, setPlayer] = useState(null);
-  const [deviceId, setDeviceId] = useState(null);
+  const [setDeviceId] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState('0:00');
   const [duration, setDuration] = useState('0:00');
-  const [setLastError] = useState(null);
 
   useEffect(() => {
     if (!token) return;
@@ -124,13 +123,17 @@ const CDPlayer = ({ track, token }) => {
       player.addListener('ready', ({ device_id }) => {
         console.log('Ready with Device ID', device_id);
         setDeviceId(device_id);
-
+        
         spotifyApi.transferMyPlayback([device_id]).then(() => {
           console.log('Playback transferred to CDPlayer');
-          player.resume().catch(error => {
-            console.error('Error resuming playback:', error);
+          spotifyApi.play({
+            uris: [track.uri],
+            device_id: device_id
+          }).then(() => {
+            setIsPlaying(true);
+          }).catch(error => {
+            console.error('Error starting playback:', error);
           });
-          setIsPlaying(true);
         }).catch(error => {
           console.error('Error transferring playback:', error);
         });
@@ -140,77 +143,33 @@ const CDPlayer = ({ track, token }) => {
         console.log('Device ID has gone offline', device_id);
       });
 
-      player.addListener('initialization_error', ({ message }) => {
-        console.error('Initialization Error:', message);
-      });
-
-      player.addListener('authentication_error', ({ message }) => {
-        console.error('Authentication Error:', message);
-        authorizeSpotify(); // Reauthorize if token is invalid
-      });
-
-      player.addListener('account_error', ({ message }) => {
-        console.error('Account Error:', message);
-      });
-
-      player.addListener('playback_error', ({ message }) => {
-        console.error('Playback Error:', message);
-      });
-
       player.addListener('player_state_changed', (state) => {
         if (!state) return;
 
-        const durationInSeconds = state.duration / 1000 || 0;
-        const currentTimeInSeconds = state.position / 1000 || 0;
+        const durationInSeconds = state.duration / 1000;
+        const currentTimeInSeconds = state.position / 1000;
 
         setIsPlaying(!state.paused);
         setCurrentTime(formatTime(currentTimeInSeconds));
         setDuration(formatTime(durationInSeconds));
-        setProgress((currentTimeInSeconds / durationInSeconds) * 100 || 0);
+        setProgress((currentTimeInSeconds / durationInSeconds) * 100);
       });
 
-      player.connect().catch(error => {
-        console.error('Connection Error:', error);
-        authorizeSpotify(); // Reauthorize if connection fails
+      player.connect().then(success => {
+        if (success) {
+          console.log('The Web Playback SDK successfully connected to Spotify!');
+        }
+      }).catch(error => {
+        console.error('Failed to connect to Spotify:', error);
       });
     };
 
     return () => {
       if (player) {
-        player.pause();
         player.disconnect();
       }
     };
-  }, [player, token]);
-
-  useEffect(() => {
-    if (deviceId && track.uri) {
-      spotifyApi.getMyCurrentPlaybackState().then(state => {
-        if (state && state.device.id !== deviceId) {
-          spotifyApi.transferMyPlayback([deviceId]).then(() => {
-            console.log('Playback transferred to CDPlayer');
-          }).catch(err => {
-            console.error('Failed to transfer playback', err);
-          });
-        }
-
-        fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-          method: 'PUT',
-          body: JSON.stringify({ uris: [track.uri] }),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        }).catch(err => {
-          console.error("Failed to load track", err);
-          setLastError("Playback Error");
-        });
-      }).catch(err => {
-        console.error("Failed to get current playback state", err);
-        setLastError("Playback Error");
-      });
-    }
-  }, [setLastError, deviceId, track.uri, token]);
+  }, [player, setDeviceId, token, track.uri]);
 
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);
@@ -219,38 +178,19 @@ const CDPlayer = ({ track, token }) => {
   };
 
   const togglePlay = () => {
-    if (isPlaying) {
-      player.pause();
-    } else {
-      player.resume().catch(error => {
-        console.error('Error resuming playback:', error);
+    if (player) {
+      player.togglePlay().then(() => {
+        setIsPlaying(!isPlaying);
       });
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleProgressChange = (e) => {
     const newProgress = e.target.value;
-    const newPosition = (newProgress / 100) * (player.getCurrentState()?.duration / 1000 || 0);
-    player.seek(newPosition * 1000).catch(error => {
-      console.error('Error seeking playback:', error);
-    });
+    if (player) {
+      player.seek(duration * (newProgress / 100) * 1000);
+    }
     setProgress(newProgress);
-  };
-
-  const authorizeSpotify = () => {
-    const scopes = [
-      'user-read-playback-state',
-      'user-modify-playback-state',
-      'user-read-currently-playing',
-    ];
-
-    const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID; 
-    const redirectUri = encodeURIComponent('https://sadoge.github.io/retro-computer-interface/'); 
-
-    const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${scopes.join('%20')}`;
-
-    window.location.href = authUrl;
   };
 
   return (
@@ -266,7 +206,7 @@ const CDPlayer = ({ track, token }) => {
             type="range"
             min="0"
             max="100"
-            value={isNaN(progress) ? 0 : progress}
+            value={progress}
             onChange={handleProgressChange}
           />
         </ProgressBarContainer>

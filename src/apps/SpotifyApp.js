@@ -73,16 +73,13 @@ const SpotifyApp = ({ openNewWindow }) => {
   const [searchResults, setSearchResults] = useState([]);
 
   const checkTokenValidity = useCallback(() => {
-    if (!token || !tokenExpiry) {
-      return false;
-    }
-    const now = new Date().getTime();
-    return now < parseInt(tokenExpiry, 10);
+    if (!token || !tokenExpiry) return false;
+    return new Date().getTime() < parseInt(tokenExpiry, 10);
   }, [token, tokenExpiry]);
 
   const authenticateSpotify = () => {
-    const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID; 
-    const redirectUri = encodeURIComponent(window.location.href); 
+    const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID;
+    const redirectUri = encodeURIComponent(window.location.origin);
     const scopes = encodeURIComponent('streaming user-read-private user-read-email user-modify-playback-state user-read-currently-playing user-read-playback-state');
     const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=${scopes}`;
     window.location.href = authUrl;
@@ -101,32 +98,32 @@ const SpotifyApp = ({ openNewWindow }) => {
           return initial;
         }, {});
 
-      const _token = hash.access_token;
-      const _expiresIn = hash.expires_in; // Token expiry time in seconds
-
-      if (_token) {
-        const expiresAt = new Date().getTime() + parseInt(_expiresIn, 10) * 1000;
-        setToken(_token);
-        setTokenExpiry(expiresAt);
-        localStorage.setItem('spotifyToken', _token);
-        localStorage.setItem('spotifyTokenExpiry', expiresAt);
-        spotifyApi.setAccessToken(_token);
-        window.history.replaceState(null, null, ' '); // Optionally remove the hash from the URL
+      if (hash.access_token) {
+        const expiresIn = hash.expires_in;
+        const expiresAt = new Date().getTime() + parseInt(expiresIn, 10) * 1000;
+        setToken(hash.access_token);
+        setTokenExpiry(expiresAt.toString());
+        localStorage.setItem('spotifyToken', hash.access_token);
+        localStorage.setItem('spotifyTokenExpiry', expiresAt.toString());
+        spotifyApi.setAccessToken(hash.access_token);
+        window.history.replaceState(null, null, ' ');
       } else {
-        authenticateSpotify(); // Re-authenticate if no valid token found
+        authenticateSpotify();
       }
     } else {
       spotifyApi.setAccessToken(token);
     }
-  }, [token, tokenExpiry, checkTokenValidity]);
+  }, [checkTokenValidity, token]);
 
   const handleTrackSelect = (track) => {
-    const width = 320;
-    const height = 450;
+    if (!checkTokenValidity()) {
+      authenticateSpotify();
+      return;
+    }
 
     openNewWindow('CDPlayer', <CDPlayer track={track} token={token} />, {
-      width: width,
-      height: height,
+      width: 320,
+      height: 450,
       resizable: false
     });
   };
@@ -141,19 +138,17 @@ const SpotifyApp = ({ openNewWindow }) => {
     } catch (error) {
       console.error('Error searching tracks:', error);
       if (error.status === 401) {
-        authenticateSpotify(); // Re-authenticate if token is invalid
+        authenticateSpotify();
       }
     }
   };
 
-  if (!token) {
+  if (!checkTokenValidity()) {
     return (
       <Container>
         <h2>Spotify App</h2>
         <p>Please log in to Spotify to use this app.</p>
-        <button onClick={authenticateSpotify}>
-          Login to Spotify
-        </button>
+        <button onClick={authenticateSpotify}>Login to Spotify</button>
       </Container>
     );
   }
