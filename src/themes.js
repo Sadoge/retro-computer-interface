@@ -50,3 +50,20 @@ export const macOS = {
     shadow: 'none',
   },
 };
+
+export const oldRadio = {
+  name: 'Old Radio',
+  desktop: '#f4e1c1',  // Light beige background
+  taskbar: 'linear-gradient(to bottom, #8b7765 0%, #705d4e 50%, #4e463a 100%)', // Gradient to give a vintage look
+  window: {
+    background: '#f4e1c1', // Same light beige color for windows
+    border: '#8b7765', // Brown border
+    titleBar: 'linear-gradient(to bottom, #8b7765, #705d4e)', // Vintage style gradient for title bar
+    titleText: 'white',  // White text on the title bar
+  },
+  text: '#333333', // Darker text color for better readability
+  icon: {
+    text: '#8b7765',  // Brown text for icons
+    shadow: '1px 1px 1px #4e463a', // Slight dark shadow to give depth
+  },
+};

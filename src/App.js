@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { Rnd } from 'react-rnd';
 import { ThemeProvider, useTheme } from './ThemeContext';
-import { MyComputer, MyDocuments, InternetExplorer, RecycleBin, MediaPlayer, SpotifyApp } from './apps';
+import { SpotifyApp, YouTubeSearchApp } from './apps';
 
 const Desktop = styled.div`
   background-color: ${props => props.theme.desktop};
@@ -32,16 +32,6 @@ const Window = styled.div`
   flex-direction: column;
   overflow: hidden;
   height: 100%;
-`;
-
-const WindowHeader = styled.div`
-  background: ${props => props.theme.window.titleBar};
-  color: ${props => props.theme.window.titleText};
-  padding: 5px 10px;
-  font-weight: bold;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 `;
 
 const WindowContent = styled.div`
@@ -80,14 +70,6 @@ const IconImage = styled.div`
   margin-bottom: 5px;
 `;
 
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  color: ${props => props.theme.window.titleText};
-  font-size: 16px;
-  cursor: pointer;
-`;
-
 const ThemeSelector = styled.select`
   margin-left: 10px;
 `;
@@ -97,6 +79,23 @@ const AppContent = () => {
   const { toggleTheme } = useTheme();
   const [openApps, setOpenApps] = useState([]);
   const desktopRef = useRef(null);
+
+  const apps = [
+    {
+      id: 'spotifyApp',
+      name: 'Spotify',
+      icon: '🎧',
+      component: SpotifyApp, 
+      defaultSize: { width: 376, height: 535 },
+    },
+    {
+      id: 'youtubeSearch',
+      name: 'YouTube Music',
+      icon: '🎵',
+      component: YouTubeSearchApp,
+      defaultSize: { width: 800, height: 500 },
+    },
+  ];
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -111,34 +110,29 @@ const AppContent = () => {
     });
   };
 
-  const openNewWindow = (appName, content, size) => {
+  const openNewWindow = (appName, component, appProps, size) => {
     const newApp = {
       id: `${appName}-${Date.now()}`,
       name: appName,
-      content: content,
+      component: component,  
+      props: appProps,      
       position: { x: 50, y: 50 },
       size: size || { width: 300, height: 200 }
     };
     setOpenApps([...openApps, newApp]);
   };
 
-  const apps = [
-    { id: 'myComputer', name: 'My Computer', icon: '🖥️', content: <MyComputer />, defaultSize: { width: 300, height: 200 } },
-    { id: 'documents', name: 'My Documents', icon: '📁', content: <MyDocuments />, defaultSize: { width: 300, height: 200 } },
-    { id: 'internetExplorer', name: 'Internet Explorer', icon: '🌐', content: <InternetExplorer />, defaultSize: { width: 300, height: 200 } },
-    { id: 'recycleBin', name: 'Recycle Bin', icon: '🗑️', content: <RecycleBin />, defaultSize: { width: 300, height: 200 } },
-    { id: 'mediaPlayer', name: 'Media Player', icon: '🎵', content: <MediaPlayer />, defaultSize: { width: 300, height: 200 } },
-    { id: 'spotifyApp', name: 'Spotify', icon: '🎧', content: <SpotifyApp openNewWindow={openNewWindow} />, defaultSize: { width: 400, height: 400 } },
-  ];
-
   const openApp = (app) => {
     if (!openApps.find(openApp => openApp.id === app.id)) {
       const desktopRect = desktopRef.current.getBoundingClientRect();
       const maxWidth = Math.min(app.defaultSize.width, desktopRect.width * 0.8);
       const maxHeight = Math.min(app.defaultSize.height, desktopRect.height * 0.8);
-      
+
       setOpenApps([...openApps, { 
-        ...app, 
+        id: app.id,
+        name: app.name,
+        component: app.component, 
+        props: { openNewWindow, onClose: () => closeApp(app.id) },
         position: { x: 50, y: 50 }, 
         size: { width: maxWidth, height: maxHeight } 
       }]);
@@ -181,6 +175,7 @@ const AppContent = () => {
             <option>Windows XP</option>
             <option>Windows 95</option>
             <option>macOS</option>
+            <option>Old Radio</option>
           </ThemeSelector>
         </div>
         <div>{formatTime(time)}</div>
@@ -204,12 +199,12 @@ const AppContent = () => {
           }
         >
           <Window>
-            <WindowHeader>
-              <span>{app.name}</span>
-              <CloseButton onClick={() => closeApp(app.id)}>×</CloseButton>
-            </WindowHeader>
             <WindowContent>
-              {app.content}
+              {typeof app.component === 'function' ? (
+                <app.component {...app.props} />
+              ) : (
+                <div>Error: Invalid Component</div>
+              )}
             </WindowContent>
           </Window>
         </Rnd>
