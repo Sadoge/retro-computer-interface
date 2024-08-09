@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main # Set this to your default branch
+      - main # Or your default branch
 
 jobs:
   build:
@@ -16,12 +16,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "20" # Use a specific Node.js version
+          node-version: "20"
 
       - name: Install dependencies
         run: npm install
 
       - name: Build the project
+        env:
+          REACT_APP_SPOTIFY_CLIENT_ID: ${{ secrets.REACT_APP_SPOTIFY_CLIENT_ID }}
         run: npm run build
 
       - name: Deploy to GitHub Pages
