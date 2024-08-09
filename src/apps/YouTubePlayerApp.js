@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 
 const Container = styled.div`
@@ -143,6 +143,35 @@ const YouTubePlayerApp = ({ playlist, currentIndex = 0, onClose }) => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(currentIndex);
   const playerRef = useRef(null);
 
+  const playVideo = useCallback(() => {
+    if(player) {
+      player.playVideo();
+    }
+  }, [player]);
+
+  const pauseVideo = () => {
+    player.pauseVideo();
+  };
+
+  const onPlayerReady = useCallback((event) => {
+    setPlayer(event.target);
+    setDuration(event.target.getDuration());
+    playVideo()
+  }, [playVideo]);
+
+  const playNextTrack = useCallback(() => {
+    if (currentTrackIndex < playlist.length - 1) {
+      setCurrentTrackIndex(currentTrackIndex + 1);
+    }
+  }, [playlist, currentTrackIndex, setCurrentTrackIndex]);
+
+  const onPlayerStateChange = useCallback((event) => {
+    setIsPlaying(event.data === window.YT.PlayerState.PLAYING);
+    if (event.data === window.YT.PlayerState.ENDED) {
+      playNextTrack();
+    }
+  }, [setIsPlaying, playNextTrack]);
+
   useEffect(() => {
     const tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';
@@ -170,26 +199,13 @@ const YouTubePlayerApp = ({ playlist, currentIndex = 0, onClose }) => {
         playerRef.current.destroy();
       }
     };
-  }, []);
+  }, [currentTrackIndex, onPlayerReady, onPlayerStateChange, playlist]);
 
   useEffect(() => {
     if (playerRef.current && playlist[currentTrackIndex]) {
       playerRef.current.loadVideoById(playlist[currentTrackIndex].videoId);
     }
   }, [currentTrackIndex, playlist]);
-
-  const onPlayerReady = (event) => {
-    setPlayer(event.target);
-    setDuration(event.target.getDuration());
-    playVideo()
-  };
-
-  const onPlayerStateChange = (event) => {
-    setIsPlaying(event.data === window.YT.PlayerState.PLAYING);
-    if (event.data === window.YT.PlayerState.ENDED) {
-      playNextTrack();
-    }
-  };
 
   useEffect(() => {
     let interval;
@@ -201,25 +217,9 @@ const YouTubePlayerApp = ({ playlist, currentIndex = 0, onClose }) => {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  const playVideo = () => {
-    if(player) {
-      player.playVideo();
-    }
-  };
-
-  const pauseVideo = () => {
-    player.pauseVideo();
-  };
-
   const stopVideo = () => {
     player.stopVideo();
     setCurrentTime(0);
-  };
-
-  const playNextTrack = () => {
-    if (currentTrackIndex < playlist.length - 1) {
-      setCurrentTrackIndex(currentTrackIndex + 1);
-    }
   };
 
   const playPreviousTrack = () => {
@@ -274,15 +274,16 @@ const YouTubePlayerApp = ({ playlist, currentIndex = 0, onClose }) => {
       </Controls>
       <PlaylistContainer>
         <h3>Playlist</h3>
-        {playlist.map((track, index) => (
-          <PlaylistItem 
+        {playlist.map((track, index) => {
+          const isActive = index === currentTrackIndex;
+          return <PlaylistItem 
             key={index} 
-            isActive={index === currentTrackIndex}
+            isActive={isActive}
             onClick={() => setCurrentTrackIndex(index)}
-          >
-            {track.videoInfo.title}
+           >
+          {track.videoInfo.title}
           </PlaylistItem>
-        ))}
+        })}
       </PlaylistContainer>
       <div id="youtube-player" style={{ display: 'none' }}></div> {/* Hidden YouTube player */}
     </Container>
