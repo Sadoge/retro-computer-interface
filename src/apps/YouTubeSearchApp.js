@@ -121,10 +121,11 @@ const PlaylistItem = styled.div`
   }
 `;
 
-const YouTubeSearchApp = ({ openNewWindow, onClose }) => {
+const YouTubeSearchApp = ({ openNewWindow, onClose, playlists, savePlaylist }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [playlist, setPlaylist] = useState([]);
+  const [currentPlaylist, setCurrentPlaylist] = useState([]);
+  const [playlistName, setPlaylistName] = useState('');
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -145,12 +146,20 @@ const YouTubeSearchApp = ({ openNewWindow, onClose }) => {
   };
 
   const addToPlaylist = (video) => {
-    setPlaylist([...playlist, { videoId: video.id.videoId, videoInfo: video.snippet }]);
+    setCurrentPlaylist([...currentPlaylist, { videoId: video.id.videoId, videoInfo: video.snippet }]);
+  };
+
+  const saveCurrentPlaylist = () => {
+    if (playlistName && currentPlaylist.length > 0) {
+      savePlaylist(playlistName, currentPlaylist);
+      setPlaylistName('');
+      setCurrentPlaylist([]);
+    }
   };
 
   const playPlaylist = () => {
-    if (playlist.length > 0) {
-      openNewWindow('YouTubePlayer', YouTubePlayerApp, { playlist, currentIndex: 0, onClose }, { width: 376, height: 535 });
+    if (currentPlaylist.length > 0) {
+      openNewWindow('YouTubePlayer', YouTubePlayerApp, { playlist: currentPlaylist, currentIndex: 0, onClose }, { width: 376, height: 535 });
     }
   };
 
@@ -170,7 +179,6 @@ const YouTubeSearchApp = ({ openNewWindow, onClose }) => {
         <ResultsList>
           {searchResults.map((video) => (
             <VideoItem key={video.id.videoId}>
-              {/* <img src={video.snippet.thumbnails.default.url} alt={video.snippet.title} /> */}
               <VideoInfo>
                 <VideoTitle>{video.snippet.title}</VideoTitle>
                 <VideoChannel>{video.snippet.channelTitle}</VideoChannel>
@@ -182,13 +190,20 @@ const YouTubeSearchApp = ({ openNewWindow, onClose }) => {
           ))}
         </ResultsList>
         <PlaylistContainer>
-          <h3>Playlist</h3>
-          {playlist.map((item, index) => (
+          <h3>Current Playlist</h3>
+          {currentPlaylist.map((item, index) => (
             <PlaylistItem key={index}>
               <span>{item.videoInfo.title}</span>
             </PlaylistItem>
           ))}
-          {playlist.length > 0 && (
+          <input
+            type="text"
+            value={playlistName}
+            onChange={(e) => setPlaylistName(e.target.value)}
+            placeholder="Playlist name"
+          />
+          <button onClick={saveCurrentPlaylist}>Save Playlist</button>
+          {currentPlaylist.length > 0 && (
             <button onClick={playPlaylist}>Play Playlist</button>
           )}
         </PlaylistContainer>

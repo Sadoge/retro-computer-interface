@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { Rnd } from 'react-rnd';
 import { ThemeProvider, useTheme } from './ThemeContext';
-import { SpotifyApp, YouTubeSearchApp } from './apps';
+import { SpotifyApp, YouTubeSearchApp, PlaylistManagerApp } from './apps';
+import { savePlaylistsToCloud, getPlaylistsFromCloud, removePlaylistFromCloud } from './firebaseConfig';
 
 const Desktop = styled.div`
   background-color: ${props => props.theme.desktop};
@@ -79,6 +80,7 @@ const AppContent = () => {
   const { toggleTheme } = useTheme();
   const [openApps, setOpenApps] = useState([]);
   const desktopRef = useRef(null);
+  const [playlists, setPlaylists] = useState({});
 
   const apps = [
     {
@@ -95,12 +97,55 @@ const AppContent = () => {
       component: YouTubeSearchApp,
       defaultSize: { width: 800, height: 500 },
     },
+    {
+      id: 'playlistManager',
+      name: 'Playlist Manager',
+      icon: '📋',
+      component: PlaylistManagerApp,
+      defaultSize: { width: 400, height: 600 },
+    },
   ];
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
+    const loadPlaylists = async () => {
+      const cloudPlaylists = await getPlaylistsFromCloud();
+      setPlaylists(cloudPlaylists);
+    };
+    loadPlaylists();
     return () => clearInterval(timer);
   }, []);
+
+  const savePlaylist = (name, tracks) => {
+    setPlaylists(prevPlaylists => {
+      const updatedPlaylists = {
+        ...prevPlaylists,
+        [name]: tracks
+      };
+      savePlaylistsToCloud(updatedPlaylists);
+      return updatedPlaylists;
+    });
+  };
+
+  const removePlaylist = async (name) => {
+    setPlaylists(prevPlaylists => {
+      const { [name]: removed, ...rest } = prevPlaylists;
+      removePlaylistFromCloud(name);
+      return rest;
+    });
+  };
+
+  const removeSongFromPlaylist = (playlistName, songIndex) => {
+    setPlaylists(prevPlaylists => {
+      const updatedPlaylist = prevPlaylists[playlistName].filter((_, index) => index !== songIndex);
+      const updatedPlaylists = {
+        ...prevPlaylists,
+        [playlistName]: updatedPlaylist
+      };
+      savePlaylistsToCloud(updatedPlaylists);
+      return updatedPlaylists;
+    });
+  };
 
   const formatTime = (date) => {
     return date.toLocaleString('en-US', { 
@@ -115,7 +160,10 @@ const AppContent = () => {
       id: `${appName}-${Date.now()}`,
       name: appName,
       component: component,  
-      props: appProps,      
+      props: {
+        ...appProps,
+        onClose: () => closeApp(`${appName}-${Date.now()}`),
+      },      
       position: { x: 50, y: 50 },
       size: size || { width: 300, height: 200 }
     };
@@ -132,7 +180,14 @@ const AppContent = () => {
         id: app.id,
         name: app.name,
         component: app.component, 
-        props: { openNewWindow, onClose: () => closeApp(app.id) },
+        props: { 
+          openNewWindow, 
+          onClose: () => closeApp(app.id),
+          playlists,
+          savePlaylist,
+          removePlaylist,
+          removeSongFromPlaylist
+        },
         position: { x: 50, y: 50 }, 
         size: { width: maxWidth, height: maxHeight } 
       }]);

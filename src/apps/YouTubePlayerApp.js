@@ -8,10 +8,10 @@ const Container = styled.div`
   align-items: center;
   width: 350px;
   padding: 20px;
-  background-color: #f4e1c1; /* Light beige color */
-  border: 2px solid #8b7765; /* Brown border */
-  box-shadow: 5px 5px 0px #8b7765; /* Vintage shadow effect */
-  font-family: 'Courier New', Courier, monospace; /* Retro font */
+  background-color: #f4e1c1;
+  border: 2px solid #8b7765;
+  box-shadow: 5px 5px 0px #8b7765;
+  font-family: 'Courier New', Courier, monospace;
 `;
 
 const CloseButton = styled.button`
@@ -48,11 +48,11 @@ const CD = styled.div`
   width: 180px;
   height: 180px;
   border-radius: 50%;
-  background-image: url(${props => props.thumbnail});
+  background-image: url(${props => props.$thumbnail});
   background-size: cover;
   background-position: center;
   animation: ${rotate} 5s linear infinite;
-  animation-play-state: ${props => props.isPlaying ? 'running' : 'paused'};
+  animation-play-state: ${props => props.$isPlaying ? 'running' : 'paused'};
   border: 10px solid #ddd;
 `;
 
@@ -129,11 +129,67 @@ const PlaylistItem = styled.div`
   &:hover {
     background-color: #ddd;
   }
-  ${({ isActive }) => isActive && `
+  ${({ $isActive }) => $isActive && `
     background-color: #8b7765;
     color: white;
   `}
 `;
+
+const ErrorMessage = styled.div`
+  color: red;
+  margin: 10px 0;
+`;
+
+const DebugButton = styled.button`
+  margin-top: 10px;
+  padding: 5px 10px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  cursor: pointer;
+`;
+
+const FallbackContent = styled.div`
+  text-align: center;
+  padding: 20px;
+`;
+
+const LoadingSpinner = styled.div`
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #8b7765;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <h1>Something went wrong.</h1>;
+    }
+
+    return this.props.children;
+  }
+}
 
 const YouTubePlayerApp = ({ playlist, currentIndex = 0, onClose }) => {
   const [player, setPlayer] = useState(null);
@@ -141,98 +197,232 @@ const YouTubePlayerApp = ({ playlist, currentIndex = 0, onClose }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(currentIndex);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const playerRef = useRef(null);
+  const containerRef = useRef(null);
 
-  const playVideo = useCallback(() => {
-    if(player) {
-      player.playVideo();
+  const logPlayerState = useCallback(() => {
+    if (player) {
+      console.log('Player state:', player.getPlayerState());
+      console.log('Video URL:', player.getVideoUrl());
+      console.log('Current time:', player.getCurrentTime());
+      console.log('Duration:', player.getDuration());
+    } else {
+      console.log('Player not initialized');
     }
   }, [player]);
 
-  const pauseVideo = () => {
-    player.pauseVideo();
-  };
-
   const onPlayerReady = useCallback((event) => {
+    console.log('Player is ready');
     setPlayer(event.target);
+    setIsPlayerReady(true);
     setDuration(event.target.getDuration());
-    playVideo()
-  }, [playVideo]);
+    logPlayerState();
+  }, [logPlayerState]);
+
+  const onPlayerStateChange = useCallback((event) => {
+    console.log('Player state changed:', event.data);
+    if (event.data === window.YT.PlayerState.PLAYING) {
+      setIsPlaying(true);
+      setIsLoading(false);
+    } else {
+      setIsPlaying(false);
+    }
+    if (event.data === window.YT.PlayerState.ENDED) {
+      console.log('Video ended, playing next track');
+      setCurrentTrackIndex((prevIndex) => 
+        prevIndex < playlist.length - 1 ? prevIndex + 1 : prevIndex
+      );
+    }
+  }, [playlist.length]);
+
+  const onPlayerError = useCallback((event) => {
+    console.error('Player error:', event.data);
+    setError(`Player error: ${event.data}`);
+    setIsLoading(false);
+    logPlayerState();
+  }, [logPlayerState]);
+
+  const loadVideo = useCallback((videoId) => {
+    if (player && isPlayerReady) {
+      console.log('Loading video:', videoId);
+      setIsLoading(true);
+      const maxRetries = 3;
+      let retryCount = 0;
+
+      const attemptLoad = () => {
+        try {
+          player.loadVideoById(videoId);
+        } catch (error) {
+          console.error('Error loading video:', error);
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`Retrying video load (${retryCount}/${maxRetries})...`);
+            setTimeout(attemptLoad, 1000);
+          } else {
+            setError(`Error loading video after ${maxRetries} attempts: ${error.message}`);
+            setIsLoading(false);
+          }
+        }
+      };
+
+      attemptLoad();
+    } else {
+      console.warn('Player not ready to load video');
+    }
+  }, [player, isPlayerReady]);
+
+  const playVideo = useCallback(() => {
+    if (player && isPlayerReady) {
+      player.playVideo();
+    } else {
+      console.warn("Player not initialized yet or not ready");
+    }
+  }, [player, isPlayerReady]);
+
+  const pauseVideo = useCallback(() => {
+    if (player && isPlayerReady) {
+      player.pauseVideo();
+    }
+  }, [player, isPlayerReady]);
+
+  const stopVideo = useCallback(() => {
+    if (player && isPlayerReady) {
+      player.stopVideo();
+      setCurrentTime(0);
+    }
+  }, [player, isPlayerReady]);
 
   const playNextTrack = useCallback(() => {
     if (currentTrackIndex < playlist.length - 1) {
-      setCurrentTrackIndex(currentTrackIndex + 1);
+      setCurrentTrackIndex((prevIndex) => prevIndex + 1);
     }
-  }, [playlist, currentTrackIndex, setCurrentTrackIndex]);
+  }, [playlist.length, currentTrackIndex]);
 
-  const onPlayerStateChange = useCallback((event) => {
-    setIsPlaying(event.data === window.YT.PlayerState.PLAYING);
-    if (event.data === window.YT.PlayerState.ENDED) {
-      playNextTrack();
+  const playPreviousTrack = useCallback(() => {
+    if (currentTrackIndex > 0) {
+      setCurrentTrackIndex((prevIndex) => prevIndex - 1);
     }
-  }, [setIsPlaying, playNextTrack]);
+  }, [currentTrackIndex]);
 
   useEffect(() => {
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    if (!playlist || playlist.length === 0) {
+      console.error('Playlist is empty or undefined');
+      setError('Playlist is empty or undefined');
+      setIsLoading(false);
+      return;
+    }
 
-    window.onYouTubeIframeAPIReady = () => {
-      playerRef.current = new window.YT.Player('youtube-player', {
-        height: '0',
-        width: '0',
-        videoId: playlist[currentTrackIndex].videoId,
-        events: {
-          onReady: onPlayerReady,
-          onStateChange: onPlayerStateChange,
-        },
-        playerVars: {
-          controls: 0,
-          disablekb: 1,
-        },
+    const loadYouTubeAPI = () => {
+      return new Promise((resolve, reject) => {
+        if (window.YT && window.YT.Player) {
+          console.log('YouTube API already loaded');
+          resolve(window.YT);
+        } else {
+          console.log('Loading YouTube API');
+          const tag = document.createElement('script');
+          tag.src = 'https://www.youtube.com/iframe_api';
+          const firstScriptTag = document.getElementsByTagName('script')[0];
+          firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+          window.onYouTubeIframeAPIReady = () => {
+            console.log('YouTube IFrame API is ready');
+            resolve(window.YT);
+          };
+
+          tag.onerror = (error) => {
+            console.error('Error loading YouTube API:', error);
+            reject(error);
+          };
+        }
       });
     };
+
+const initializePlayer = async () => {
+      try {
+        await loadYouTubeAPI();
+        const initialVideoId = playlist[currentTrackIndex]?.videoId;
+        console.log('Initializing player with video ID:', initialVideoId);
+        
+        if (!initialVideoId) {
+          throw new Error('Invalid video ID');
+        }
+
+        if (!containerRef.current) {
+          console.error('YouTube player container not found');
+          return;
+        }
+
+        const playerElement = document.createElement('div');
+        playerElement.id = 'youtube-player';
+        containerRef.current.appendChild(playerElement);
+
+        playerRef.current = new window.YT.Player('youtube-player', {
+          height: '0',
+          width: '0',
+          videoId: initialVideoId,
+          events: {
+            onReady: onPlayerReady,
+            onStateChange: onPlayerStateChange,
+            onError: onPlayerError,
+          },
+          playerVars: {
+            controls: 0,
+            disablekb: 1,
+            origin: window.location.origin,
+          },
+        });
+      } catch (error) {
+        console.error('Error initializing YouTube player:', error);
+        setError(`Error initializing YouTube player: ${error.message}`);
+        setIsLoading(false);
+      }
+    };
+
+    initializePlayer();
 
     return () => {
       if (playerRef.current) {
         playerRef.current.destroy();
       }
+      if (containerRef.current) {
+        const playerElement = containerRef.current.querySelector('#youtube-player');
+        if (playerElement) {
+          containerRef.current.removeChild(playerElement);
+        }
+      }
     };
-  }, [currentTrackIndex, onPlayerReady, onPlayerStateChange, playlist]);
+  }, []);
 
   useEffect(() => {
-    if (playerRef.current && playlist[currentTrackIndex]) {
-      playerRef.current.loadVideoById(playlist[currentTrackIndex].videoId);
+    if (isPlayerReady && playlist[currentTrackIndex]) {
+      console.log('Current track changed, loading new video');
+      setIsLoading(true);
+      loadVideo(playlist[currentTrackIndex].videoId);
     }
-  }, [currentTrackIndex, playlist]);
+  }, [currentTrackIndex, playlist, isPlayerReady, loadVideo]);
 
   useEffect(() => {
     let interval;
-    if (isPlaying) {
+    if (isPlaying && isPlayerReady) {
       interval = setInterval(() => {
-        setCurrentTime(playerRef.current.getCurrentTime());
+        if (player) {
+          setCurrentTime(player.getCurrentTime());
+        }
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [isPlaying, player, isPlayerReady]);
 
-  const stopVideo = () => {
-    player.stopVideo();
-    setCurrentTime(0);
-  };
-
-  const playPreviousTrack = () => {
-    if (currentTrackIndex > 0) {
-      setCurrentTrackIndex(currentTrackIndex - 1);
-    }
-  };
-
-  const handleSeek = (e) => {
+  const handleSeek = useCallback((e) => {
     const time = parseFloat(e.target.value);
-    player.seekTo(time);
-    setCurrentTime(time);
-  };
+    if (player && isPlayerReady) {
+      player.seekTo(time);
+      setCurrentTime(time);
+    }
+  }, [player, isPlayerReady]);
 
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);
@@ -241,52 +431,68 @@ const YouTubePlayerApp = ({ playlist, currentIndex = 0, onClose }) => {
   };
 
   return (
-    <Container>
-      <CloseButton onClick={onClose}>×</CloseButton>
-      <Title>YouTube Music Player</Title>
-      <br></br>
-      <CDContainer>
-        <CD 
-          thumbnail={playlist[currentTrackIndex]?.videoInfo.thumbnails?.high?.url} 
-          isPlaying={isPlaying}
-        />
-      </CDContainer>
-      <Controls>
-        <ControlButtons>
-          <ControlButton onClick={playPreviousTrack}>⏮</ControlButton>
-          <ControlButton onClick={playVideo}>▶️</ControlButton>
-          <ControlButton onClick={pauseVideo}>⏸</ControlButton>
-          <ControlButton onClick={stopVideo}>⏹</ControlButton>
-          <ControlButton onClick={playNextTrack}>⏭</ControlButton>
-        </ControlButtons>
-        <ProgressContainer>
-          <ProgressBar 
-            type="range" 
-            min="0" 
-            max={duration} 
-            value={currentTime} 
-            onChange={handleSeek}
-          />
-          <TimeDisplay>
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </TimeDisplay>
-        </ProgressContainer>
-      </Controls>
-      <PlaylistContainer>
-        <h3>Playlist</h3>
-        {playlist.map((track, index) => {
-          const isActive = index === currentTrackIndex;
-          return <PlaylistItem 
-            key={index} 
-            isActive={isActive}
-            onClick={() => setCurrentTrackIndex(index)}
-           >
-          {track.videoInfo.title}
-          </PlaylistItem>
-        })}
-      </PlaylistContainer>
-      <div id="youtube-player" style={{ display: 'none' }}></div> {/* Hidden YouTube player */}
-    </Container>
+    <ErrorBoundary>
+      <Container ref={containerRef}>
+        <CloseButton onClick={onClose}>×</CloseButton>
+        <Title>YouTube Music Player</Title>
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : (
+          <>
+            <CDContainer>
+              <CD 
+                $thumbnail={playlist[currentTrackIndex]?.videoInfo.thumbnails?.high?.url} 
+                $isPlaying={isPlaying}
+              />
+            </CDContainer>
+            <Controls>
+              <ControlButtons>
+                <ControlButton onClick={playPreviousTrack}>⏮</ControlButton>
+                <ControlButton onClick={playVideo}>▶️</ControlButton>
+                <ControlButton onClick={pauseVideo}>⏸</ControlButton>
+                <ControlButton onClick={stopVideo}>⏹</ControlButton>
+                <ControlButton onClick={playNextTrack}>⏭</ControlButton>
+              </ControlButtons>
+              <ProgressContainer>
+                <ProgressBar 
+                  type="range" 
+                  min="0" 
+                  max={duration} 
+                  value={currentTime} 
+                  onChange={handleSeek}
+                />
+                <TimeDisplay>
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </TimeDisplay>
+              </ProgressContainer>
+            </Controls>
+            <PlaylistContainer>
+              <h3>Current Playlist</h3>
+              {playlist.map((track, index) => (
+                <PlaylistItem
+                  key={index}
+                  $isActive={index === currentTrackIndex}
+                  onClick={() => setCurrentTrackIndex(index)}
+                >
+                  {track.videoInfo.title}
+                </PlaylistItem>
+              ))}
+            </PlaylistContainer>
+          </>
+        )}
+        {!isPlayerReady && !isLoading && (
+          <FallbackContent>
+            <h3>{playlist[currentTrackIndex]?.videoInfo.title}</h3>
+            <img 
+              src={playlist[currentTrackIndex]?.videoInfo.thumbnails?.medium?.url} 
+              alt={playlist[currentTrackIndex]?.videoInfo.title} 
+            />
+          </FallbackContent>
+        )}
+        <DebugButton onClick={logPlayerState}>Log Player State</DebugButton>
+      </Container>
+    </ErrorBoundary>
   );
 };
 
