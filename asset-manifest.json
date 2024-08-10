@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/retro-computer-interface/static/css/main.ca8a035e.css",
-    "main.js": "/retro-computer-interface/static/js/main.e4b92ded.js",
+    "main.js": "/retro-computer-interface/static/js/main.a87bea7b.js",
     "static/js/453.bc57b83d.chunk.js": "/retro-computer-interface/static/js/453.bc57b83d.chunk.js",
     "index.html": "/retro-computer-interface/index.html",
     "main.ca8a035e.css.map": "/retro-computer-interface/static/css/main.ca8a035e.css.map",
-    "main.e4b92ded.js.map": "/retro-computer-interface/static/js/main.e4b92ded.js.map",
+    "main.a87bea7b.js.map": "/retro-computer-interface/static/js/main.a87bea7b.js.map",
     "453.bc57b83d.chunk.js.map": "/retro-computer-interface/static/js/453.bc57b83d.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.ca8a035e.css",
-    "static/js/main.e4b92ded.js"
+    "static/js/main.a87bea7b.js"
   ]
 }
