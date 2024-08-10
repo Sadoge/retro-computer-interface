@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 
+
 const Container = styled.div`
   position: relative;
   display: flex;
@@ -49,11 +50,37 @@ const CD = styled.div`
   height: 180px;
   border-radius: 50%;
   background-image: url(${props => props.$thumbnail});
-  background-size: cover;
+  background-size: cover; /* Ensure the image covers the entire area */
   background-position: center;
+  background-repeat: no-repeat;
   animation: ${rotate} 5s linear infinite;
   animation-play-state: ${props => props.$isPlaying ? 'running' : 'paused'};
   border: 10px solid #ddd;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #333;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle, transparent 70%, rgba(0,0,0,0.3) 100%);
+  }
 `;
 
 const Controls = styled.div`

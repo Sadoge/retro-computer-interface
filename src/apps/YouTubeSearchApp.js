@@ -206,10 +206,9 @@ const YouTubeSearchApp = ({ openNewWindow, onClose, playlists, savePlaylist, pla
 
   const playPlaylist = () => {
     if (currentPlaylist.length > 0) {
-      openNewWindow('YouTubePlayer', playerPreference === 'modern' ? YouTubePlayerApp : OldRadioPlayerApp, { 
+      openNewWindow(playerPreference === 'modern' ? 'YouTubePlayer' : 'OldRadioPlayer', playerPreference === 'modern' ? YouTubePlayerApp : OldRadioPlayerApp, { 
         playlist: currentPlaylist, 
         currentIndex: 0, 
-        onClose: () => {} 
       }, { width: playerPreference === 'modern' ? 376 : 400, height: playerPreference === 'modern' ? 535 : 300 });
     } else {
       alert('Please add some songs to the playlist before playing');
