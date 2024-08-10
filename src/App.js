@@ -4,6 +4,7 @@ import { Rnd } from 'react-rnd';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { SpotifyApp, YouTubeSearchApp, PlaylistManagerApp } from './apps';
 import { savePlaylistsToCloud, getPlaylistsFromCloud, removePlaylistFromCloud } from './firebaseConfig';
+import SignIn from './SignIn';
 
 const Desktop = styled.div`
   background-color: ${props => props.theme.desktop};
@@ -75,7 +76,21 @@ const ThemeSelector = styled.select`
   margin-left: 10px;
 `;
 
-const AppContent = () => {
+const SignOutButton = styled.button`
+  margin-left: 10px;
+  padding: 5px 10px;
+  background-color: #8b7765;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #705d4e;
+  }
+`;
+
+const AppContent = ({ onSignOut }) => {
   const [time, setTime] = useState(new Date());
   const { toggleTheme } = useTheme();
   const [openApps, setOpenApps] = useState([]);
@@ -232,6 +247,7 @@ const AppContent = () => {
             <option>macOS</option>
             <option>Old Radio</option>
           </ThemeSelector>
+          <SignOutButton onClick={onSignOut}>Sign Out</SignOutButton>
         </div>
         <div>{formatTime(time)}</div>
       </TopBar>
@@ -277,10 +293,33 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
-  <ThemeProvider>
-    <AppContent />
-  </ThemeProvider>
-);
+const App = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+
+  const handleSignIn = (email) => {
+    console.log('Signing in with email:', email); // Add this for debugging
+    setIsAuthenticated(true);
+    setUser({ email });
+  };
+
+  const handleSignOut = () => {
+    console.log('Signing out'); // Add this for debugging
+    setIsAuthenticated(false);
+    setUser(null);
+  };
+
+  console.log('isAuthenticated:', isAuthenticated); // Add this for debugging
+
+  return (
+    <ThemeProvider>
+      {!isAuthenticated ? (
+        <SignIn onSignIn={handleSignIn} />
+      ) : (
+        <AppContent onSignOut={handleSignOut} />
+      )}
+    </ThemeProvider>
+  );
+};
 
 export default App;
