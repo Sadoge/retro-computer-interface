@@ -14,18 +14,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-export const savePlaylistsToCloud = async (playlists) => {
+export const savePlaylistsToCloud = async (uid, playlists) => {
   try {
-    await set(ref(database, 'playlists'), playlists);
+    await set(ref(database, `playlists/${uid}`), playlists);
     console.log('Playlists saved to cloud successfully');
   } catch (error) {
     console.error('Error saving playlists to cloud:', error);
   }
 };
 
-export const getPlaylistsFromCloud = async () => {
+export const getPlaylistsFromCloud = async (uid) => {
   try {
-    const snapshot = await get(ref(database, 'playlists'));
+    const snapshot = await get(ref(database, `playlists/${uid}`));
     if (snapshot.exists()) {
       return snapshot.val();
     } else {
@@ -38,11 +38,13 @@ export const getPlaylistsFromCloud = async () => {
   }
 };
 
-export const removePlaylistFromCloud = async (playlistName) => {
+export const removePlaylistFromCloud = async (uid, playlistName) => {
   try {
-    await remove(ref(database, `playlists/${playlistName}`));
+    await remove(ref(database, `playlists/${uid}/${playlistName}`));
     console.log('Playlist removed from cloud successfully');
   } catch (error) {
     console.error('Error removing playlist from cloud:', error);
   }
 };
+
+export { app };

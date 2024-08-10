@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
+import { YouTubePlayerApp, OldRadioPlayerApp } from './index';
 
 const API_KEY = process.env.REACT_APP_YOUTUBE_API_KEY;
 
@@ -146,7 +147,17 @@ const ButtonContainer = styled.div`
   margin-top: 10px;
 `;
 
-const YouTubeSearchApp = ({ openNewWindow, onClose, playlists, savePlaylist }) => {
+const PlayerPreferenceSelector = styled.select`
+  margin-bottom: 10px;
+  padding: 10px;
+  font-size: 14px;
+  background-color: #f4e1c1;
+  border: 2px solid #8b7765;
+  color: #333;
+  font-family: 'Courier New', Courier, monospace;
+`;
+
+const YouTubeSearchApp = ({ openNewWindow, onClose, playlists, savePlaylist, playerPreference, setPlayerPreference }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [currentPlaylist, setCurrentPlaylist] = useState([]);
@@ -195,10 +206,11 @@ const YouTubeSearchApp = ({ openNewWindow, onClose, playlists, savePlaylist }) =
 
   const playPlaylist = () => {
     if (currentPlaylist.length > 0) {
-      openNewWindow('YouTubePlayer', 'YouTubePlayerApp', { 
+      openNewWindow('YouTubePlayer', playerPreference === 'modern' ? YouTubePlayerApp : OldRadioPlayerApp, { 
         playlist: currentPlaylist, 
         currentIndex: 0, 
-      }, { width: 376, height: 535 });
+        onClose: () => {} 
+      }, { width: playerPreference === 'modern' ? 376 : 400, height: playerPreference === 'modern' ? 535 : 300 });
     } else {
       alert('Please add some songs to the playlist before playing');
     }
@@ -216,6 +228,13 @@ const YouTubeSearchApp = ({ openNewWindow, onClose, playlists, savePlaylist }) =
           placeholder="Search for music..."
         />
       </form>
+      <PlayerPreferenceSelector 
+        value={playerPreference} 
+        onChange={(e) => setPlayerPreference(e.target.value)}
+      >
+        <option value="modern">Modern Player</option>
+        <option value="vintage">Vintage Radio Player</option>
+      </PlayerPreferenceSelector>
       <PlaylistSelector 
         value={selectedPlaylist} 
         onChange={(e) => setSelectedPlaylist(e.target.value)}

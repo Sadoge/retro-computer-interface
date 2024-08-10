@@ -5,6 +5,8 @@ import { ThemeProvider, useTheme } from './ThemeContext';
 import { SpotifyApp, YouTubeSearchApp, PlaylistManagerApp } from './apps';
 import { savePlaylistsToCloud, getPlaylistsFromCloud, removePlaylistFromCloud } from './firebaseConfig';
 import SignIn from './SignIn';
+import { app } from './firebaseConfig';
+import { getAuth, signInWithEmailAndPassword , onAuthStateChanged} from 'firebase/auth';
 
 const Desktop = styled.div`
   background-color: ${props => props.theme.desktop};
@@ -90,12 +92,14 @@ const SignOutButton = styled.button`
   }
 `;
 
-const AppContent = ({ onSignOut }) => {
+const AppContent = ({ onSignOut, user: initialUser }) => {
   const [time, setTime] = useState(new Date());
   const { toggleTheme } = useTheme();
   const [openApps, setOpenApps] = useState([]);
   const desktopRef = useRef(null);
   const [playlists, setPlaylists] = useState({});
+  const [playerPreference, setPlayerPreference] = useState('modern'); // 'modern' or 'vintage'
+  const [user, setUser] = useState(initialUser);
 
   const apps = [
     {
@@ -122,22 +126,41 @@ const AppContent = ({ onSignOut }) => {
   ];
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    const loadPlaylists = async () => {
-      const cloudPlaylists = await getPlaylistsFromCloud();
-      setPlaylists(cloudPlaylists);
-    };
-    loadPlaylists();
-    return () => clearInterval(timer);
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        // User is signed in, load playlists
+        loadPlaylists(currentUser.uid);
+      } else {
+        // User is signed out, clear playlists
+        setPlaylists({});
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
+  const loadPlaylists = async (uid) => {
+    try {
+      const cloudPlaylists = await getPlaylistsFromCloud(uid);
+      setPlaylists(cloudPlaylists);
+    } catch (error) {
+      console.error('Error loading playlists:', error);
+    }
+  };
+
   const savePlaylist = (name, tracks) => {
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
     setPlaylists(prevPlaylists => {
       const updatedPlaylists = {
         ...prevPlaylists,
         [name]: tracks
       };
-      savePlaylistsToCloud(updatedPlaylists);
+      savePlaylistsToCloud(user.uid, updatedPlaylists);
       return updatedPlaylists;
     });
   };
@@ -201,7 +224,9 @@ const AppContent = ({ onSignOut }) => {
           playlists,
           savePlaylist,
           removePlaylist,
-          removeSongFromPlaylist
+          removeSongFromPlaylist,
+          playerPreference,
+          setPlayerPreference
         },
         position: { x: 50, y: 50 }, 
         size: { width: maxWidth, height: maxHeight } 
@@ -297,16 +322,27 @@ const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
 
-  const handleSignIn = (email) => {
-    console.log('Signing in with email:', email); // Add this for debugging
-    setIsAuthenticated(true);
-    setUser({ email });
+  const handleSignIn = async (email, password) => {
+    try {
+      const auth = getAuth();
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      setUser(userCredential.user);
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('Error signing in:', error);
+      alert('Failed to sign in. Please check your credentials.');
+    }
   };
 
   const handleSignOut = () => {
-    console.log('Signing out'); // Add this for debugging
-    setIsAuthenticated(false);
-    setUser(null);
+    const auth = getAuth();
+    auth.signOut().then(() => {
+      console.log('Successfully signed out'); // Add this for debugging
+      setIsAuthenticated(false);
+      setUser(null);
+    }).catch((error) => {
+      console.error('Error signing out:', error);
+    });
   };
 
   console.log('isAuthenticated:', isAuthenticated); // Add this for debugging
@@ -316,7 +352,7 @@ const App = () => {
       {!isAuthenticated ? (
         <SignIn onSignIn={handleSignIn} />
       ) : (
-        <AppContent onSignOut={handleSignOut} />
+        <AppContent onSignOut={handleSignOut} user={user} />
       )}
     </ThemeProvider>
   );

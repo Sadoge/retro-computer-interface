@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { YouTubePlayerApp } from './index';
+import { YouTubePlayerApp, OldRadioPlayerApp } from './index';
 
 const Container = styled.div`
   display: flex;
@@ -66,11 +66,16 @@ const PlaylistManagerApp = ({ playlists, savePlaylist, removePlaylist, removeSon
   const playPlaylist = (playlistName) => {
     if (playlists[playlistName] && playlists[playlistName].length > 0) {
       console.log('Opening YouTube Player with playlist:', playlists[playlistName]);
-      openNewWindow('YouTubePlayer', YouTubePlayerApp, { 
+      openNewWindow('OldRadioPlayer', OldRadioPlayerApp, { 
         playlist: playlists[playlistName], 
         currentIndex: 0, 
         onClose: () => {} 
       }, { width: 376, height: 535 });
+      // openNewWindow('YouTubePlayer', YouTubePlayerApp, { 
+      //   playlist: playlists[playlistName], 
+      //   currentIndex: 0, 
+      //   onClose: () => {} 
+      // }, { width: 376, height: 535 });
     } else {
       console.error('Playlist is empty or does not exist');
     }

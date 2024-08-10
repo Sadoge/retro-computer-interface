@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { app } from './firebaseConfig'; // Make sure this import is correct
 
 const SignInContainer = styled.div`
   display: flex;
@@ -48,7 +49,7 @@ const SignIn = ({ onSignIn }) => {
     e.preventDefault();
     console.log('Submitting sign-in form'); // Add this for debugging
     if (email && password) {
-      onSignIn(email);
+      onSignIn(email, password);
     } else {
       alert('Please enter both email and password');
     }
