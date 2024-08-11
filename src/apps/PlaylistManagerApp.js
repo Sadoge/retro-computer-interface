@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { usePlaylist } from '../PlaylistContext';
 import { YouTubePlayerApp, OldRadioPlayerApp } from './index';
 
 const Container = styled.div`
@@ -52,30 +53,39 @@ const Button = styled.button`
   }
 `;
 
-const PlaylistManagerApp = ({ playlists, savePlaylist, removePlaylist, removeSongFromPlaylist, onClose, openNewWindow }) => {
+const PlayerPreferenceSelector = styled.select`
+  margin-bottom: 10px;
+  padding: 10px;
+  font-size: 14px;
+  background-color: #f4e1c1;
+  border: 2px solid #8b7765;
+  color: #333;
+  font-family: 'Courier New', Courier, monospace;
+`;
+
+const PlaylistManagerApp = ({ onClose, openNewWindow, playerPreference, setPlayerPreference }) => {
+  const { playlists, removePlaylist, createPlaylist } = usePlaylist();
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [newPlaylistName, setNewPlaylistName] = useState('');
 
   const handleCreatePlaylist = () => {
     if (newPlaylistName && !playlists[newPlaylistName]) {
-      savePlaylist(newPlaylistName, []);
+      createPlaylist(newPlaylistName);
       setNewPlaylistName('');
     }
   };
 
   const playPlaylist = (playlistName) => {
     if (playlists[playlistName] && playlists[playlistName].length > 0) {
-      console.log('Opening YouTube Player with playlist:', playlists[playlistName]);
-      openNewWindow('OldRadioPlayer', OldRadioPlayerApp, { 
-        playlist: playlists[playlistName], 
-        currentIndex: 0, 
-        onClose: () => {} 
-      }, { width: 376, height: 535 });
-      // openNewWindow('YouTubePlayer', YouTubePlayerApp, { 
-      //   playlist: playlists[playlistName], 
-      //   currentIndex: 0, 
-      //   onClose: () => {} 
-      // }, { width: 376, height: 535 });
+      openNewWindow(
+        playerPreference === 'modern' ? 'YouTubePlayer' : 'OldRadioPlayer',
+        playerPreference === 'modern' ? YouTubePlayerApp : OldRadioPlayerApp,
+        { 
+          playlist: playlists[playlistName], 
+          currentIndex: 0, 
+        },
+        { width: playerPreference === 'modern' ? 376 : 400, height: playerPreference === 'modern' ? 535 : 300 }
+      );
     } else {
       console.error('Playlist is empty or does not exist');
     }
@@ -84,6 +94,13 @@ const PlaylistManagerApp = ({ playlists, savePlaylist, removePlaylist, removeSon
   return (
     <Container>
       <h2>Playlist Manager</h2>
+      <PlayerPreferenceSelector 
+        value={playerPreference} 
+        onChange={(e) => setPlayerPreference(e.target.value)}
+      >
+        <option value="modern">Modern Player</option>
+        <option value="vintage">Vintage Radio Player</option>
+      </PlayerPreferenceSelector>
       <div>
         <input
           type="text"
@@ -109,7 +126,6 @@ const PlaylistManagerApp = ({ playlists, savePlaylist, removePlaylist, removeSon
           {playlists[selectedPlaylist].map((song, index) => (
             <SongItem key={index}>
               <span>{song.videoInfo.title}</span>
-              <Button onClick={() => removeSongFromPlaylist(selectedPlaylist, index)}>Remove</Button>
             </SongItem>
           ))}
         </SongList>

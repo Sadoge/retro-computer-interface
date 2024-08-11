@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
-import { YouTubePlayerApp, OldRadioPlayerApp } from './index';
+import { usePlaylist } from '../PlaylistContext';
 
 const API_KEY = process.env.REACT_APP_YOUTUBE_API_KEY;
 
@@ -16,20 +16,6 @@ const Container = styled.div`
   font-family: 'Courier New', Courier, monospace;
 `;
 
-const CloseButton = styled.button`
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background-color: transparent;
-  border: none;
-  color: #8b7765;
-  font-size: 16px;
-  cursor: pointer;
-  &:hover {
-    color: #4e463a;
-  }
-`;
-
 const SearchBar = styled.input`
   margin-bottom: 10px;
   padding: 10px;
@@ -38,12 +24,6 @@ const SearchBar = styled.input`
   border: 2px solid #8b7765;
   color: #333;
   font-family: 'Courier New', Courier, monospace;
-`;
-
-const ContentContainer = styled.div`
-  display: flex;
-  flex-grow: 1;
-  overflow: hidden;
 `;
 
 const ResultsList = styled.div`
@@ -100,27 +80,6 @@ const Button = styled.button`
   }
 `;
 
-const PlaylistContainer = styled.div`
-  width: 300px;
-  max-height: 100%;
-  overflow-y: auto;
-  border: 1px solid #8b7765;
-  background-color: #f4e1c1;
-`;
-
-const PlaylistItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  border-bottom: 1px solid #8b7765;
-  font-family: 'Courier New', Courier, monospace;
-
-  &:hover {
-    background-color: #ddd;
-  }
-`;
-
 const PlaylistSelector = styled.select`
   margin-bottom: 10px;
   padding: 10px;
@@ -131,45 +90,11 @@ const PlaylistSelector = styled.select`
   font-family: 'Courier New', Courier, monospace;
 `;
 
-const PlaylistInput = styled.input`
-  margin-bottom: 10px;
-  padding: 10px;
-  font-size: 14px;
-  background-color: #f4e1c1;
-  border: 2px solid #8b7765;
-  color: #333;
-  font-family: 'Courier New', Courier, monospace;
-`;
-
-const ButtonContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-`;
-
-const PlayerPreferenceSelector = styled.select`
-  margin-bottom: 10px;
-  padding: 10px;
-  font-size: 14px;
-  background-color: #f4e1c1;
-  border: 2px solid #8b7765;
-  color: #333;
-  font-family: 'Courier New', Courier, monospace;
-`;
-
-const YouTubeSearchApp = ({ openNewWindow, onClose, playlists, savePlaylist, playerPreference, setPlayerPreference }) => {
+const YouTubeSearchApp = ({ onClose }) => {
+  const { playlists, addSongToPlaylist } = usePlaylist();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [currentPlaylist, setCurrentPlaylist] = useState([]);
-  const [playlistName, setPlaylistName] = useState('');
   const [selectedPlaylist, setSelectedPlaylist] = useState('');
-
-  useEffect(() => {
-    if (selectedPlaylist && playlists[selectedPlaylist]) {
-      setCurrentPlaylist(playlists[selectedPlaylist]);
-      setPlaylistName(selectedPlaylist);
-    }
-  }, [selectedPlaylist, playlists]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -189,35 +114,16 @@ const YouTubeSearchApp = ({ openNewWindow, onClose, playlists, savePlaylist, pla
     }
   };
 
-  const addToPlaylist = (video) => {
-    setCurrentPlaylist([...currentPlaylist, { videoId: video.id.videoId, videoInfo: video.snippet }]);
-  };
-
-  const saveCurrentPlaylist = () => {
-    if (playlistName && currentPlaylist.length > 0) {
-      savePlaylist(playlistName, currentPlaylist);
-      setPlaylistName('');
-      setCurrentPlaylist([]);
-      alert('Playlist saved successfully!');
+  const handleAddToPlaylist = (video) => {
+    if (selectedPlaylist) {
+      addSongToPlaylist(selectedPlaylist, { videoId: video.id.videoId, videoInfo: video.snippet });
     } else {
-      alert('Please enter a playlist name and add some songs');
-    }
-  };
-
-  const playPlaylist = () => {
-    if (currentPlaylist.length > 0) {
-      openNewWindow(playerPreference === 'modern' ? 'YouTubePlayer' : 'OldRadioPlayer', playerPreference === 'modern' ? YouTubePlayerApp : OldRadioPlayerApp, { 
-        playlist: currentPlaylist, 
-        currentIndex: 0, 
-      }, { width: playerPreference === 'modern' ? 376 : 400, height: playerPreference === 'modern' ? 535 : 300 });
-    } else {
-      alert('Please add some songs to the playlist before playing');
+      alert('Please select a playlist first');
     }
   };
 
   return (
     <Container>
-      <CloseButton onClick={onClose}>×</CloseButton>
       <h2>YouTube Music Search</h2>
       <form onSubmit={handleSearch}>
         <SearchBar
@@ -227,13 +133,6 @@ const YouTubeSearchApp = ({ openNewWindow, onClose, playlists, savePlaylist, pla
           placeholder="Search for music..."
         />
       </form>
-      <PlayerPreferenceSelector 
-        value={playerPreference} 
-        onChange={(e) => setPlayerPreference(e.target.value)}
-      >
-        <option value="modern">Modern Player</option>
-        <option value="vintage">Vintage Radio Player</option>
-      </PlayerPreferenceSelector>
       <PlaylistSelector 
         value={selectedPlaylist} 
         onChange={(e) => setSelectedPlaylist(e.target.value)}
@@ -243,41 +142,20 @@ const YouTubeSearchApp = ({ openNewWindow, onClose, playlists, savePlaylist, pla
           <option key={name} value={name}>{name}</option>
         ))}
       </PlaylistSelector>
-      <ContentContainer>
-        <ResultsList>
-          {searchResults.map((video) => (
-            <VideoItem key={video.id.videoId}>
-              <VideoInfo>
-                <VideoTitle>{video.snippet.title}</VideoTitle>
-                <VideoChannel>{video.snippet.channelTitle}</VideoChannel>
-              </VideoInfo>
-              <Button onClick={() => addToPlaylist(video)}>
-                Add to Playlist
-              </Button>
-            </VideoItem>
-          ))}
-        </ResultsList>
-        <PlaylistContainer>
-          <h3>Current Playlist: {playlistName}</h3>
-          {currentPlaylist.map((item, index) => (
-            <PlaylistItem key={index}>
-              <span>{item.videoInfo.title}</span>
-            </PlaylistItem>
-          ))}
-          <PlaylistInput
-            type="text"
-            value={playlistName}
-            onChange={(e) => setPlaylistName(e.target.value)}
-            placeholder="Playlist name"
-          />
-          <ButtonContainer>
-            <Button onClick={saveCurrentPlaylist}>Save Playlist</Button>
-            {currentPlaylist.length > 0 && (
-              <Button onClick={playPlaylist}>Play Playlist</Button>
-            )}
-          </ButtonContainer>
-        </PlaylistContainer>
-      </ContentContainer>
+      <ResultsList>
+        {searchResults.map((video) => (
+          <VideoItem key={video.id.videoId}>
+            <VideoInfo>
+              <VideoTitle>{video.snippet.title}</VideoTitle>
+              <VideoChannel>{video.snippet.channelTitle}</VideoChannel>
+            </VideoInfo>
+            <Button onClick={() => handleAddToPlaylist(video)}>
+              Add to Playlist
+            </Button>
+          </VideoItem>
+        ))}
+      </ResultsList>
+      <Button onClick={onClose}>Close</Button>
     </Container>
   );
 };

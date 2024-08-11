@@ -3,10 +3,10 @@ import styled from 'styled-components';
 import { Rnd } from 'react-rnd';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { SpotifyApp, YouTubeSearchApp, PlaylistManagerApp } from './apps';
-import { savePlaylistsToCloud, getPlaylistsFromCloud, removePlaylistFromCloud } from './firebaseConfig';
 import SignIn from './SignIn';
 import { app } from './firebaseConfig';
 import { getAuth, signInWithEmailAndPassword , onAuthStateChanged} from 'firebase/auth';
+import { PlaylistProvider } from './PlaylistContext';
 
 const Desktop = styled.div`
   background-color: ${props => props.theme.desktop};
@@ -92,14 +92,12 @@ const SignOutButton = styled.button`
   }
 `;
 
-const AppContent = ({ onSignOut, user: initialUser }) => {
+const AppContent = ({ onSignOut }) => {
   const [time, setTime] = useState(new Date());
   const { toggleTheme } = useTheme();
   const [openApps, setOpenApps] = useState([]);
   const desktopRef = useRef(null);
-  const [playlists, setPlaylists] = useState({});
-  const [playerPreference, setPlayerPreference] = useState('modern'); // 'modern' or 'vintage'
-  const [user, setUser] = useState(initialUser);
+  const [playerPreference, setPlayerPreference] = useState('modern');
 
   const apps = [
     {
@@ -124,66 +122,6 @@ const AppContent = ({ onSignOut, user: initialUser }) => {
       defaultSize: { width: 400, height: 600 },
     },
   ];
-
-  useEffect(() => {
-    const auth = getAuth(app);
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // User is signed in, load playlists
-        loadPlaylists(currentUser.uid);
-      } else {
-        // User is signed out, clear playlists
-        setPlaylists({});
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const loadPlaylists = async (uid) => {
-    try {
-      const cloudPlaylists = await getPlaylistsFromCloud(uid);
-      setPlaylists(cloudPlaylists);
-    } catch (error) {
-      console.error('Error loading playlists:', error);
-    }
-  };
-
-  const savePlaylist = (name, tracks) => {
-    if (!user) {
-      console.error('User not authenticated');
-      return;
-    }
-    setPlaylists(prevPlaylists => {
-      const updatedPlaylists = {
-        ...prevPlaylists,
-        [name]: tracks
-      };
-      savePlaylistsToCloud(user.uid, updatedPlaylists);
-      return updatedPlaylists;
-    });
-  };
-
-  const removePlaylist = async (name) => {
-    setPlaylists(prevPlaylists => {
-      const { [name]: removed, ...rest } = prevPlaylists;
-      removePlaylistFromCloud(name);
-      return rest;
-    });
-  };
-
-  const removeSongFromPlaylist = (playlistName, songIndex) => {
-    setPlaylists(prevPlaylists => {
-      const updatedPlaylist = prevPlaylists[playlistName].filter((_, index) => index !== songIndex);
-      const updatedPlaylists = {
-        ...prevPlaylists,
-        [playlistName]: updatedPlaylist
-      };
-      savePlaylistsToCloud(updatedPlaylists);
-      return updatedPlaylists;
-    });
-  };
 
   const formatTime = (date) => {
     return date.toLocaleString('en-US', { 
@@ -221,10 +159,6 @@ const AppContent = ({ onSignOut, user: initialUser }) => {
         props: { 
           openNewWindow, 
           onClose: () => closeApp(app.id),
-          playlists,
-          savePlaylist,
-          removePlaylist,
-          removeSongFromPlaylist,
           playerPreference,
           setPlayerPreference
         },
@@ -337,7 +271,7 @@ const App = () => {
   const handleSignOut = () => {
     const auth = getAuth();
     auth.signOut().then(() => {
-      console.log('Successfully signed out'); // Add this for debugging
+      console.log('Successfully signed out');
       setIsAuthenticated(false);
       setUser(null);
     }).catch((error) => {
@@ -345,14 +279,14 @@ const App = () => {
     });
   };
 
-  console.log('isAuthenticated:', isAuthenticated); // Add this for debugging
-
   return (
     <ThemeProvider>
       {!isAuthenticated ? (
         <SignIn onSignIn={handleSignIn} />
       ) : (
-        <AppContent onSignOut={handleSignOut} user={user} />
+        <PlaylistProvider userId={user.uid}>
+          <AppContent onSignOut={handleSignOut} user={user} />
+        </PlaylistProvider>
       )}
     </ThemeProvider>
   );

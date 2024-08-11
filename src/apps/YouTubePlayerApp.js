@@ -367,7 +367,7 @@ const YouTubePlayerApp = ({ playlist, currentIndex = 0, onClose }) => {
       });
     };
 
-const initializePlayer = async () => {
+    const initializePlayer = async () => {
       try {
         await loadYouTubeAPI();
         const initialVideoId = playlist[currentTrackIndex]?.videoId;
@@ -462,6 +462,7 @@ const initializePlayer = async () => {
       <Container ref={containerRef}>
         <CloseButton onClick={onClose}>×</CloseButton>
         <Title>YouTube Music Player</Title>
+        <br/>
         {error && <ErrorMessage>{error}</ErrorMessage>}
         {isLoading ? (
           <LoadingSpinner />
