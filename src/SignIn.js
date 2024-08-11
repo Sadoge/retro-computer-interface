@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { app } from './firebaseConfig'; // Make sure this import is correct
 
 const SignInContainer = styled.div`
   display: flex;
