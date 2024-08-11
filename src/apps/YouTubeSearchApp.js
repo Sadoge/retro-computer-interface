@@ -3,8 +3,6 @@ import styled from 'styled-components';
 import axios from 'axios';
 import { usePlaylist } from '../PlaylistContext';
 
-const API_KEY = process.env.REACT_APP_YOUTUBE_API_KEY;
-
 const Container = styled.div`
   display: flex;
   flex-direction: column;
@@ -95,28 +93,40 @@ const YouTubeSearchApp = ({ onClose }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleSearch = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError(null);
     try {
-      const response = await axios.get(`https://www.googleapis.com/youtube/v3/search`, {
+      const response = await axios.get(`https://invidious.jing.rocks/api/v1/search`, {
         params: {
-          part: 'snippet',
           q: searchTerm,
           type: 'video',
-          videoCategoryId: '10',
-          key: API_KEY,
+          sort_by: 'relevance',
         },
       });
-      setSearchResults(response.data.items);
+      setSearchResults(response.data);
     } catch (error) {
       console.error('Error searching videos:', error);
+      setError('Failed to fetch search results. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleAddToPlaylist = (video) => {
     if (selectedPlaylist) {
-      addSongToPlaylist(selectedPlaylist, { videoId: video.id.videoId, videoInfo: video.snippet });
+      addSongToPlaylist(selectedPlaylist, { 
+        videoId: video.videoId, 
+        videoInfo: { 
+          title: video.title,
+          channelTitle: video.author,
+          thumbnailUrl: video.thumbnailUrl
+        } 
+      });
     } else {
       alert('Please select a playlist first');
     }
@@ -142,12 +152,14 @@ const YouTubeSearchApp = ({ onClose }) => {
           <option key={name} value={name}>{name}</option>
         ))}
       </PlaylistSelector>
+      {isLoading && <p>Loading...</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
       <ResultsList>
         {searchResults.map((video) => (
-          <VideoItem key={video.id.videoId}>
+          <VideoItem key={video.videoId}>
             <VideoInfo>
-              <VideoTitle>{video.snippet.title}</VideoTitle>
-              <VideoChannel>{video.snippet.channelTitle}</VideoChannel>
+              <VideoTitle>{video.title}</VideoTitle>
+              <VideoChannel>{video.author}</VideoChannel>
             </VideoInfo>
             <Button onClick={() => handleAddToPlaylist(video)}>
               Add to Playlist

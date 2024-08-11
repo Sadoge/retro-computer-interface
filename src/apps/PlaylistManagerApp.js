@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { usePlaylist } from '../PlaylistContext';
 import { YouTubePlayerApp, OldRadioPlayerApp } from './index';
+import PlaylistImporter from '../PlaylistImporter';
 
 const Container = styled.div`
   display: flex;
@@ -63,15 +64,63 @@ const PlayerPreferenceSelector = styled.select`
   font-family: 'Courier New', Courier, monospace;
 `;
 
+const RenameInput = styled.input`
+  margin: 5px;
+  padding: 5px;
+  width: 150px;
+`;
+
+const Section = styled.div`
+  margin-bottom: 15px;
+`;
+
+const SectionHeader = styled.h3`
+  cursor: pointer;
+  user-select: none;
+`;
+
+const CollapsibleContent = styled.div`
+  display: ${props => props.isOpen ? 'block' : 'none'};
+`;
+
+const HorizontalLayout = styled.div`
+  display: flex;
+  justify-content: space-between;
+  height: 300px; // Adjust this value as needed
+`;
+
+const PlaylistListSection = styled.div`
+  flex: 1;
+  margin-right: 15px;
+  overflow-y: auto;
+`;
+
+const SelectedPlaylistSection = styled.div`
+  flex: 1;
+  overflow-y: auto;
+`;
+
 const PlaylistManagerApp = ({ onClose, openNewWindow, playerPreference, setPlayerPreference }) => {
-  const { playlists, removePlaylist, createPlaylist } = usePlaylist();
+  const { playlists, removePlaylist, createPlaylist, renamePlaylist } = usePlaylist();
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [renamingPlaylist, setRenamingPlaylist] = useState(null);
+  const [newName, setNewName] = useState('');
+  const [importSectionOpen, setImportSectionOpen] = useState(false);
+  const [createSectionOpen, setCreateSectionOpen] = useState(false);
 
   const handleCreatePlaylist = () => {
     if (newPlaylistName && !playlists[newPlaylistName]) {
       createPlaylist(newPlaylistName);
       setNewPlaylistName('');
+    }
+  };
+
+  const handleRenamePlaylist = (oldName) => {
+    if (newName && newName !== oldName && !playlists[newName]) {
+      renamePlaylist(oldName, newName);
+      setRenamingPlaylist(null);
+      setNewName('');
     }
   };
 
@@ -101,35 +150,79 @@ const PlaylistManagerApp = ({ onClose, openNewWindow, playerPreference, setPlaye
         <option value="modern">Modern Player</option>
         <option value="vintage">Vintage Radio Player</option>
       </PlayerPreferenceSelector>
-      <div>
-        <input
-          type="text"
-          value={newPlaylistName}
-          onChange={(e) => setNewPlaylistName(e.target.value)}
-          placeholder="New playlist name"
-        />
-        <Button onClick={handleCreatePlaylist}>Create Playlist</Button>
-      </div>
-      <PlaylistList>
-        <h3>Playlists</h3>
-        {Object.entries(playlists).map(([name, tracks]) => (
-          <PlaylistItem key={name} onClick={() => setSelectedPlaylist(name)}>
-            {name} ({tracks.length} tracks)
-            <Button onClick={() => playPlaylist(name)}>Play</Button>
-            <Button onClick={() => removePlaylist(name)}>Delete</Button>
-          </PlaylistItem>
-        ))}
-      </PlaylistList>
-      {selectedPlaylist && (
-        <SongList>
-          <h3>{selectedPlaylist}</h3>
-          {playlists[selectedPlaylist].map((song, index) => (
-            <SongItem key={index}>
-              <span>{song.videoInfo.title}</span>
-            </SongItem>
-          ))}
-        </SongList>
-      )}
+      
+      <Section>
+        <SectionHeader onClick={() => setImportSectionOpen(!importSectionOpen)}>
+          {importSectionOpen ? '▼' : '▶'} Import Playlist
+        </SectionHeader>
+        <CollapsibleContent isOpen={importSectionOpen}>
+          <PlaylistImporter />
+        </CollapsibleContent>
+      </Section>
+      
+      <Section>
+        <SectionHeader onClick={() => setCreateSectionOpen(!createSectionOpen)}>
+          {createSectionOpen ? '▼' : '▶'} Create New Playlist
+        </SectionHeader>
+        <CollapsibleContent isOpen={createSectionOpen}>
+          <input
+            type="text"
+            value={newPlaylistName}
+            onChange={(e) => setNewPlaylistName(e.target.value)}
+            placeholder="New playlist name"
+          />
+          <Button onClick={handleCreatePlaylist}>Create Playlist</Button>
+        </CollapsibleContent>
+      </Section>
+
+      <HorizontalLayout>
+        <PlaylistListSection>
+          <h3>Playlists</h3>
+          <PlaylistList>
+            {Object.entries(playlists).map(([name, tracks]) => (
+              <PlaylistItem key={name}>
+                {renamingPlaylist === name ? (
+                  <>
+                    <RenameInput
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="New name"
+                    />
+                    <Button onClick={() => handleRenamePlaylist(name)}>Save</Button>
+                    <Button onClick={() => setRenamingPlaylist(null)}>Cancel</Button>
+                  </>
+                ) : (
+                  <>
+                    <span onClick={() => setSelectedPlaylist(name === selectedPlaylist ? null : name)}>
+                      {name} ({tracks.length} tracks)
+                    </span>
+                    <Button onClick={() => playPlaylist(name)}>Play</Button>
+                    <Button onClick={() => setRenamingPlaylist(name)}>Rename</Button>
+                    <Button onClick={() => removePlaylist(name)}>Delete</Button>
+                  </>
+                )}
+              </PlaylistItem>
+            ))}
+          </PlaylistList>
+        </PlaylistListSection>
+
+        <SelectedPlaylistSection>
+          {selectedPlaylist && (
+            <>
+              <h3>{selectedPlaylist}</h3>
+              <SongList>
+                {playlists[selectedPlaylist].map((song, index) => (
+                  <SongItem key={index}>
+                    <span>{song.videoInfo.title}</span>
+                  </SongItem>
+                ))}
+              </SongList>
+            </>
+          )}
+        </SelectedPlaylistSection>
+      </HorizontalLayout>
+
       <Button onClick={onClose}>Close</Button>
     </Container>
   );

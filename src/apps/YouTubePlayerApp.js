@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 
-
 const Container = styled.div`
   position: relative;
   display: flex;
@@ -49,8 +48,8 @@ const CD = styled.div`
   width: 180px;
   height: 180px;
   border-radius: 50%;
-  background-image: url(${props => props.$thumbnail});
-  background-size: cover; /* Ensure the image covers the entire area */
+  background-image: url(${props => props.$thumbnail || '/path/to/fallback-image.jpg'});
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   animation: ${rotate} 5s linear infinite;
@@ -470,7 +469,7 @@ const YouTubePlayerApp = ({ playlist, currentIndex = 0, onClose }) => {
           <>
             <CDContainer>
               <CD 
-                $thumbnail={playlist[currentTrackIndex]?.videoInfo.thumbnails?.high?.url} 
+                $thumbnail={playlist[currentTrackIndex]?.videoInfo.thumbnailUrl} 
                 $isPlaying={isPlaying}
               />
             </CDContainer>
@@ -513,8 +512,9 @@ const YouTubePlayerApp = ({ playlist, currentIndex = 0, onClose }) => {
           <FallbackContent>
             <h3>{playlist[currentTrackIndex]?.videoInfo.title}</h3>
             <img 
-              src={playlist[currentTrackIndex]?.videoInfo.thumbnails?.medium?.url} 
+              src={playlist[currentTrackIndex]?.videoInfo.thumbnailUrl} 
               alt={playlist[currentTrackIndex]?.videoInfo.title} 
+              style={{ width: '200px', height: 'auto' }}
             />
           </FallbackContent>
         )}

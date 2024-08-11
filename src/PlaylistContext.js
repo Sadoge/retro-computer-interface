@@ -21,6 +21,16 @@ export const PlaylistProvider = ({ children, userId }) => {
     }
   };
 
+  const renamePlaylist = (oldName, newName) => {
+    setPlaylists(prevPlaylists => {
+        const updatedPlaylists = { ...prevPlaylists };
+        updatedPlaylists[newName] = updatedPlaylists[oldName];
+        delete updatedPlaylists[oldName];
+        savePlaylistsToCloud(userId, updatedPlaylists);
+        return updatedPlaylists;
+    });
+  };
+
   const savePlaylist = (name, tracks) => {
     setPlaylists(prevPlaylists => {
       const updatedPlaylists = {
@@ -71,8 +81,9 @@ export const PlaylistProvider = ({ children, userId }) => {
       savePlaylist,
       removePlaylist,
       addSongToPlaylist,
-      createPlaylist
-    }}>
+      createPlaylist,
+      renamePlaylist
+      }}>
       {children}
     </PlaylistContext.Provider>
   );
